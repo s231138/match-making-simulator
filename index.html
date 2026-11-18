@@ -1,0 +1,2135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brawler AI Matchmaking Simulator — 3v3 Esports Lab</title>
+  <style>
+    /* ==========================================================================
+       1. DESIGN TOKENS & BASE THEME (Brawl-Inspired Arcade Esports Lab)
+       ========================================================================== */
+    :root {
+      --bg-deep: #090d16;
+      --bg-surface: #111827;
+      --bg-card: #172033;
+      --bg-card-elevated: #1e2942;
+      --border-subtle: rgba(148, 163, 184, 0.16);
+      --border-bright: rgba(148, 163, 184, 0.32);
+
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      /* Team Neon Accents */
+      --blue-primary: #38bdf8;
+      --blue-strong: #0284c7;
+      --blue-bg: rgba(14, 165, 233, 0.12);
+      --blue-border: rgba(56, 189, 248, 0.45);
+      --blue-glow: 0 0 24px rgba(56, 189, 248, 0.28);
+
+      --red-primary: #fb7185;
+      --red-strong: #e11d48;
+      --red-bg: rgba(244, 63, 94, 0.12);
+      --red-border: rgba(251, 113, 133, 0.45);
+      --red-glow: 0 0 24px rgba(251, 113, 133, 0.28);
+
+      /* Status & Arcade Accents */
+      --gold: #fbbf24;
+      --gold-glow: 0 0 20px rgba(251, 191, 36, 0.35);
+      --emerald: #34d399;
+      --amber: #f59e0b;
+      --purple: #a78bfa;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 26px;
+
+      --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-deep);
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.08), transparent 35%),
+        radial-gradient(circle at 85% 15%, rgba(251, 113, 133, 0.08), transparent 35%),
+        radial-gradient(circle at 50% 85%, rgba(167, 139, 250, 0.06), transparent 45%);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 4rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    /* ==========================================================================
+       2. HEADER & SECTION SHELLS
+       ========================================================================== */
+    .lab-header {
+      text-align: center;
+      padding: 1.5rem 1rem 2rem;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 1.75rem;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(167, 139, 250, 0.14);
+      border: 1px solid rgba(167, 139, 250, 0.4);
+      color: #ddd6fe;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+    }
+
+    .lab-header h1 {
+      font-size: clamp(1.65rem, 3.6vw, 2.55rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 15%, #38bdf8 55%, #fb7185 95%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .lab-header p {
+      color: var(--text-secondary);
+      max-width: 720px;
+      margin: 0 auto;
+      font-size: 0.98rem;
+    }
+
+    .section-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+    }
+
+    .section-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.9rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .section-title-group h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      color: var(--text-primary);
+    }
+
+    .section-step-tag {
+      background: var(--bg-card-elevated);
+      border: 1px solid var(--border-bright);
+      color: var(--gold);
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .section-title-group p {
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      margin-top: 0.2rem;
+    }
+
+    /* ==========================================================================
+       3. SECTION 1: MODEL WEIGHT CONTROLS
+       ========================================================================== */
+    .sliders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 1.1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .slider-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.1rem;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .slider-box:hover {
+      border-color: var(--border-bright);
+    }
+
+    .slider-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .slider-label {
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .weight-badge {
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 0.88rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.16);
+      color: var(--blue-primary);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      min-width: 3.4rem;
+      text-align: center;
+    }
+
+    .slider-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.85rem;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      background: #0f172a;
+      border-radius: 999px;
+      outline: none;
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+    }
+
+    .slider-scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+      font-family: var(--font-mono);
+    }
+
+    .controls-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.2rem;
+    }
+
+    .anti-exploit-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      cursor: pointer;
+      max-width: 680px;
+      user-select: none;
+    }
+
+    .anti-exploit-label input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      margin-top: 0.15rem;
+      accent-color: var(--gold);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .anti-exploit-text strong {
+      display: block;
+      font-size: 0.94rem;
+      color: var(--gold);
+    }
+
+    .anti-exploit-text span {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.15rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      font-family: var(--font-sans);
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 0.85rem 1.45rem;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      text-decoration: none;
+      min-height: 48px;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(14, 165, 233, 0.38);
+    }
+
+    .btn-battle {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: #ffffff;
+      font-size: 1.05rem;
+      padding: 0.95rem 1.8rem;
+      box-shadow: 0 8px 25px rgba(239, 68, 68, 0.42);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-bright);
+    }
+
+    .btn-reveal {
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
+    }
+
+    /* ==========================================================================
+       4. SECTION 2: TEAM ALLOCATION (3v3) & BATTLE ARENA
+       ========================================================================== */
+    .teams-scoreboard {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    @media (max-width: 780px) {
+      .teams-scoreboard {
+        grid-template-columns: 1fr;
+      }
+      .vs-divider {
+        margin: 0 auto;
+      }
+    }
+
+    .team-banner {
+      border-radius: var(--radius-md);
+      padding: 1rem 1.2rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .team-banner.blue {
+      background: var(--blue-bg);
+      border: 1px solid var(--blue-border);
+      box-shadow: var(--blue-glow);
+    }
+
+    .team-banner.red {
+      background: var(--red-bg);
+      border: 1px solid var(--red-border);
+      box-shadow: var(--red-glow);
+    }
+
+    .team-name {
+      font-size: 1.15rem;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .team-banner.blue .team-name { color: var(--blue-primary); }
+    .team-banner.red .team-name { color: var(--red-primary); }
+
+    .team-metrics {
+      display: flex;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .metric-chip {
+      background: rgba(9, 13, 22, 0.65);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.35rem 0.65rem;
+      text-align: right;
+    }
+
+    .metric-chip small {
+      display: block;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+    }
+
+    .metric-chip strong {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+
+    .vs-divider {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--bg-card-elevated);
+      border: 2px solid var(--gold);
+      color: var(--gold);
+      font-weight: 900;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--gold-glow);
+    }
+
+    /* 3v3 Roster Columns */
+    .rosters-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 860px) {
+      .rosters-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .team-column {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .player-card {
+      position: relative;
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      border: 1px solid var(--border-subtle);
+      transition: transform 0.25s ease, filter 0.45s ease, opacity 0.45s ease, box-shadow 0.25s ease;
+      overflow: hidden;
+    }
+
+    .player-card.blue-card {
+      border-left: 4px solid var(--blue-primary);
+    }
+
+    .player-card.red-card {
+      border-left: 4px solid var(--red-primary);
+    }
+
+    /* KO Grayscale & Stamp Overlay */
+    .player-card.is-ko {
+      filter: grayscale(100%) opacity(0.5);
+    }
+
+    .ko-stamp {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-12deg);
+      background: rgba(220, 38, 38, 0.92);
+      color: #ffffff;
+      border: 3px solid #fecaca;
+      font-weight: 900;
+      font-size: 1.45rem;
+      letter-spacing: 0.1em;
+      padding: 0.25rem 1rem;
+      border-radius: 10px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .player-card.is-ko .ko-stamp {
+      display: block;
+    }
+
+    /* Combat Hit & Attack Animations */
+    @keyframes hitShake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px) rotate(-1.5deg); }
+      40% { transform: translateX(8px) rotate(1.5deg); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+
+    @keyframes attackPulse {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.03); box-shadow: 0 0 25px rgba(251, 191, 36, 0.55); }
+      100% { transform: scale(1); }
+    }
+
+    .anim-hit {
+      animation: hitShake 0.42s ease;
+    }
+
+    .anim-attack {
+      animation: attackPulse 0.42s ease;
+    }
+
+    .player-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .avatar-identity {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brawler-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.85rem;
+      background: var(--bg-card-elevated);
+      border: 1px solid var(--border-bright);
+      flex-shrink: 0;
+    }
+
+    .brawler-info h3 {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .brawler-info .gamertag {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .mm-score-pill {
+      text-align: right;
+    }
+
+    .mm-score-pill span {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .mm-score-pill strong {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      color: var(--gold);
+    }
+
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .stat-badge {
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-subtle);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-family: var(--font-mono);
+    }
+
+    .stat-power { color: #c084fc; border-color: rgba(192, 132, 252, 0.3); }
+    .stat-trophy { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+
+    .ping-good { color: #34d399; border-color: rgba(52, 211, 153, 0.35); }
+    .ping-warn { color: #fbbf24; border-color: rgba(251, 191, 36, 0.35); }
+    .ping-bad  { color: #fb7185; border-color: rgba(251, 113, 133, 0.4); }
+
+    .exploit-flag {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.22rem 0.55rem;
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      color: #fcd34d;
+    }
+
+    /* Dynamic HP Bar */
+    .hp-wrapper {
+      background: rgba(9, 13, 22, 0.75);
+      border-radius: 8px;
+      padding: 0.45rem 0.6rem;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .hp-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      font-family: var(--font-mono);
+    }
+
+    .hp-track {
+      width: 100%;
+      height: 10px;
+      background: #090d16;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .hp-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #10b981, #34d399);
+      border-radius: 999px;
+      transition: width 0.35s ease, background 0.35s ease;
+    }
+
+    /* ==========================================================================
+       5. VISUAL BATTLE ARENA STAGE, SPARKLES & REALTIME LOG
+       ========================================================================== */
+    .arena-stage {
+      position: relative;
+      background: radial-gradient(circle at center, #1a243d 0%, #0b101d 100%);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      overflow: hidden;
+    }
+
+    .arena-controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.85rem;
+      margin-bottom: 1.15rem;
+    }
+
+    .arena-visualizer {
+      position: relative;
+      min-height: 132px;
+      background: rgba(9, 13, 22, 0.68);
+      border: 1px dashed rgba(148, 163, 184, 0.28);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      overflow: hidden;
+    }
+
+    .arena-squad {
+      display: flex;
+      gap: 0.65rem;
+      z-index: 2;
+    }
+
+    .arena-token {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      background: var(--bg-card-elevated);
+      transition: transform 0.25s ease, filter 0.35s ease, opacity 0.35s ease;
+      position: relative;
+    }
+
+    .arena-token.blue-token {
+      border: 2px solid var(--blue-primary);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+    }
+
+    .arena-token.red-token {
+      border: 2px solid var(--red-primary);
+      box-shadow: 0 0 14px rgba(251, 113, 133, 0.35);
+    }
+
+    .arena-token.token-ko {
+      filter: grayscale(100%) opacity(0.35);
+      transform: scale(0.9);
+    }
+
+    .arena-token.token-active {
+      transform: scale(1.22);
+      box-shadow: 0 0 22px var(--gold);
+      border-color: var(--gold);
+    }
+
+    .arena-center-status {
+      text-align: center;
+      z-index: 2;
+      flex: 1;
+      padding: 0 0.5rem;
+    }
+
+    .arena-center-status .turn-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--gold);
+      background: rgba(251, 191, 36, 0.14);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      margin-bottom: 0.35rem;
+    }
+
+    .arena-center-status .action-headline {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Animated Sparkle Projectile */
+    .sparkle-burst {
+      position: absolute;
+      font-size: 1.7rem;
+      pointer-events: none;
+      z-index: 20;
+      animation: sparklePop 0.65s ease-out forwards;
+      filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.85));
+    }
+
+    @keyframes sparklePop {
+      0% {
+        opacity: 0;
+        transform: scale(0.4) translateY(8px);
+      }
+      35% {
+        opacity: 1;
+        transform: scale(1.35) translateY(-6px);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.9) translateY(-24px);
+      }
+    }
+
+    /* Victory Banner */
+    .victory-banner {
+      display: none;
+      text-align: center;
+      padding: 1.25rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1rem;
+      animation: victoryGlow 1.6s infinite alternate;
+    }
+
+    .victory-banner.show {
+      display: block;
+    }
+
+    .victory-banner.blue-win {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.32), rgba(56, 189, 248, 0.18));
+      border: 2px solid var(--blue-primary);
+      box-shadow: 0 0 32px rgba(56, 189, 248, 0.45);
+    }
+
+    .victory-banner.red-win {
+      background: linear-gradient(135deg, rgba(225, 29, 72, 0.32), rgba(251, 113, 133, 0.18));
+      border: 2px solid var(--red-primary);
+      box-shadow: 0 0 32px rgba(251, 113, 133, 0.45);
+    }
+
+    @keyframes victoryGlow {
+      from { transform: scale(0.99); }
+      to { transform: scale(1.01); }
+    }
+
+    .victory-banner h3 {
+      font-size: clamp(1.25rem, 2.8vw, 1.75rem);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.3rem;
+    }
+
+    .victory-banner p {
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* Realtime Battle Log */
+    .battle-log-box {
+      background: #070a12;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      height: 195px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .log-entry {
+      padding: 0.3rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .log-entry.blue-log { border-left-color: var(--blue-primary); }
+    .log-entry.red-log  { border-left-color: var(--red-primary); }
+    .log-entry.crit-log { border-left-color: var(--gold); background: rgba(251, 191, 36, 0.08); }
+    .log-entry.lag-log  { border-left-color: var(--purple); background: rgba(167, 139, 250, 0.08); }
+    .log-entry.ko-log   { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.14); font-weight: 700; }
+
+    /* ==========================================================================
+       6. SECTION 3: DIAGNOSTIC REPORT (LOCK/REVEAL GATE + PROS/CONS)
+       ========================================================================== */
+    .reflection-gate {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(15, 23, 42, 0.9));
+      border: 1px solid rgba(167, 139, 250, 0.4);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .reflection-gate h3 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #ede9fe;
+      margin-bottom: 0.45rem;
+    }
+
+    .reflection-gate p {
+      color: var(--text-secondary);
+      max-width: 680px;
+      margin: 0 auto 1.1rem;
+      font-size: 0.92rem;
+    }
+
+    .diagnostic-content {
+      position: relative;
+      transition: filter 0.35s ease, opacity 0.35s ease;
+    }
+
+    .diagnostic-content.is-locked {
+      filter: blur(8px);
+      opacity: 0.35;
+      pointer-events: none;
+      user-select: none;
+      max-height: 210px;
+      overflow: hidden;
+    }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .diag-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+    }
+
+    .diag-stat-card span {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .diag-stat-card strong {
+      font-size: 1.15rem;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+    }
+
+    .pros-cons-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 780px) {
+      .pros-cons-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .analysis-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .analysis-card.pros {
+      border-top: 4px solid var(--emerald);
+    }
+
+    .analysis-card.cons {
+      border-top: 4px solid var(--amber);
+    }
+
+    .analysis-card h4 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .analysis-card.pros h4 { color: var(--emerald); }
+    .analysis-card.cons h4 { color: var(--amber); }
+
+    .analysis-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .analysis-list li {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      background: rgba(9, 13, 22, 0.55);
+      padding: 0.7rem 0.85rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      line-height: 1.45;
+    }
+
+    .analysis-list li strong {
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- HEADER -->
+    <header class="lab-header">
+      <div class="badge-pill">🤖 AI &amp; Game Design Lab • 3v3 Matchmaking Simulator</div>
+      <h1>Brawler AI Matchmaking Simulator</h1>
+      <p>
+        Tune the AI model weights below to see how prioritizing <strong>Power Level</strong>,
+        <strong>Trophy Count</strong>, and <strong>Geographical Ping</strong> shapes 3v3 team balance,
+        exploits, and battle outcomes.
+      </p>
+    </header>
+
+    <!-- ======================================================================
+         SECTION 1 (TOP): MODEL WEIGHT CONTROLS
+         ====================================================================== -->
+    <section class="section-card" aria-labelledby="section1-heading">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2 id="section1-heading">
+            <span class="section-step-tag">Section 1</span>
+            🎛️ Model Weight Controls
+          </h2>
+          <p>Adjust how heavily the AI Matchmaker weighs each player metric when pairing 6 players into 3v3 teams.</p>
+        </div>
+      </div>
+
+      <div class="sliders-grid">
+        <!-- Slider 1: Power Level -->
+        <div class="slider-box">
+          <div class="slider-top">
+            <label class="slider-label" for="powerWeight">⚡ Power Level Weight</label>
+            <span class="weight-badge" id="powerWeightVal">50%</span>
+          </div>
+          <p class="slider-desc">Evaluates Brawler upgrade tier (<strong>1 ≤ Power Level ≤ 11</strong>). Directly boosts max HP &amp; damage.</p>
+          <input type="range" id="powerWeight" min="0" max="100" value="50" />
+          <div class="slider-scale">
+            <span>0% (Ignore)</span>
+            <span>50%</span>
+            <span>100% (Strict)</span>
+          </div>
+        </div>
+
+        <!-- Slider 2: Trophy Count -->
+        <div class="slider-box">
+          <div class="slider-top">
+            <label class="slider-label" for="trophyWeight">🏆 Trophy Count Weight</label>
+            <span class="weight-badge" id="trophyWeightVal">50%</span>
+          </div>
+          <p class="slider-desc">Evaluates competitive skill &amp; rank (<strong>0 ≤ Trophy Count ≤ 1000</strong>). Boosts crit &amp; dodge reflex.</p>
+          <input type="range" id="trophyWeight" min="0" max="100" value="50" />
+          <div class="slider-scale">
+            <span>0% (Ignore)</span>
+            <span>50%</span>
+            <span>100% (Strict)</span>
+          </div>
+        </div>
+
+        <!-- Slider 3: Geographical Distance / Ping -->
+        <div class="slider-box">
+          <div class="slider-top">
+            <label class="slider-label" for="pingWeight">🌐 Geographical Ping Weight</label>
+            <span class="weight-badge" id="pingWeightVal">50%</span>
+          </div>
+          <p class="slider-desc">Evaluates latency distance (<strong>0 ms ≤ Ping ≤ 500 ms</strong>). Lower ping = smoother response &amp; fewer lag spikes.</p>
+          <input type="range" id="pingWeight" min="0" max="100" value="50" />
+          <div class="slider-scale">
+            <span>0% (Ignore)</span>
+            <span>50%</span>
+            <span>100% (Strict)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-footer">
+        <label class="anti-exploit-label" for="antiExploitToggle">
+          <input type="checkbox" id="antiExploitToggle" checked />
+          <div class="anti-exploit-text">
+            <strong>🛡️ Anti-Exploit Range Penalty (Enabled)</strong>
+            <span>Penalize wide stat spreads &amp; Power-Level sandbagging (e.g., Power 11 players at &lt;200 trophies) and extreme latency outliers.</span>
+          </div>
+        </label>
+
+        <button type="button" class="btn btn-primary" id="generateLobbyBtn">
+          🎲 Generate Lobby &amp; Matchmake
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         SECTION 2 (MIDDLE): TEAM ALLOCATION (3v3) & BATTLE ARENA
+         ====================================================================== -->
+    <section class="section-card" aria-labelledby="section2-heading">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2 id="section2-heading">
+            <span class="section-step-tag">Section 2</span>
+            ⚔️ Team Allocation (3v3) &amp; Battle Arena
+          </h2>
+          <p>Compare the AI's perceived <strong>Group Matchmaking Score</strong> against each team's <strong>True Combat Rating</strong>, then simulate the match!</p>
+        </div>
+      </div>
+
+      <!-- Group Skill Scoreboards -->
+      <div class="teams-scoreboard">
+        <div class="team-banner blue">
+          <div>
+            <div class="team-name">🔵 Blue Team</div>
+            <small style="color: var(--text-secondary); font-size: 0.78rem;">Mecha • Leo • Kit</small>
+          </div>
+          <div class="team-metrics">
+            <div class="metric-chip">
+              <small>AI MM Score</small>
+              <strong id="blueMMScore">0.0</strong>
+            </div>
+            <div class="metric-chip">
+              <small>True Combat Rating</small>
+              <strong id="blueTrueRating" style="color: var(--blue-primary);">0.0</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="vs-divider">VS</div>
+
+        <div class="team-banner red">
+          <div>
+            <div class="team-name">🔴 Red Team</div>
+            <small style="color: var(--text-secondary); font-size: 0.78rem;">Colt • Spike • Darryl</small>
+          </div>
+          <div class="team-metrics">
+            <div class="metric-chip">
+              <small>AI MM Score</small>
+              <strong id="redMMScore">0.0</strong>
+            </div>
+            <div class="metric-chip">
+              <small>True Combat Rating</small>
+              <strong id="redTrueRating" style="color: var(--red-primary);">0.0</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3v3 Player Cards Grid -->
+      <div class="rosters-grid">
+        <div class="team-column" id="blueRoster"></div>
+        <div class="team-column" id="redRoster"></div>
+      </div>
+
+      <!-- Interactive Battle Arena Stage -->
+      <div class="arena-stage" id="arenaStage">
+        <div class="arena-controls-bar">
+          <button type="button" class="btn btn-battle" id="startBattleBtn">
+            ⚔️ Start Battle Simulation!
+          </button>
+          <button type="button" class="btn btn-secondary" id="speedToggleBtn">
+            ⏩ Speed: 1x
+          </button>
+          <button type="button" class="btn btn-secondary" id="resetBattleBtn">
+            🔄 Reset HP
+          </button>
+        </div>
+
+        <!-- Victory Banner -->
+        <div class="victory-banner" id="victoryBanner" role="status" aria-live="polite">
+          <h3 id="victoryTitle">🎆 BLUE TEAM VICTORY! 🎆</h3>
+          <p id="victorySubtitle">Match completed in 12 turns • MVP: Mecha-Bot</p>
+        </div>
+
+        <!-- Visual Brawler Face-Off Strip -->
+        <div class="arena-visualizer" id="arenaVisualizer">
+          <div class="arena-squad" id="blueArenaTokens"></div>
+          <div class="arena-center-status">
+            <div class="turn-badge" id="arenaTurnBadge">READY FOR COMBAT</div>
+            <div class="action-headline" id="arenaHeadline">Press "Start Battle Simulation!" to test this 3v3 matchup.</div>
+          </div>
+          <div class="arena-squad" id="redArenaTokens"></div>
+        </div>
+
+        <!-- Realtime Battle Log -->
+        <div class="battle-log-box" id="battleLog" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         SECTION 3 (BOTTOM): DIAGNOSTIC REPORT
+         ====================================================================== -->
+    <section class="section-card" aria-labelledby="section3-heading">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2 id="section3-heading">
+            <span class="section-step-tag">Section 3</span>
+            📊 AI Matchmaking Diagnostic Report
+          </h2>
+          <p>Evaluate whether your weighting rules created a fair match or left exploitable blind spots.</p>
+        </div>
+      </div>
+
+      <!-- Student Reflection Lock/Reveal Gate -->
+      <div class="reflection-gate">
+        <h3>🔒 Student Challenge: Is this match fair?</h3>
+        <p>
+          Before unlocking the AI Diagnostic Report, inspect both teams' <strong>Power Levels (1–11)</strong>,
+          <strong>Trophy Counts (0–1000)</strong>, <strong>Pings (0–500 ms)</strong>, and the <strong>Battle Outcome</strong>.
+          Did your slider weights hide an unfair advantage?
+        </p>
+        <button type="button" class="btn btn-reveal" id="toggleReportBtn">
+          🔓 Reveal AI Diagnostic Report
+        </button>
+      </div>
+
+      <!-- Dynamic Pros & Cons Report -->
+      <div class="diagnostic-content is-locked" id="diagnosticContent">
+        <div class="summary-strip" id="diagSummaryStrip"></div>
+        <div class="pros-cons-grid">
+          <div class="analysis-card pros">
+            <h4>✅ Pros (Model Advantages)</h4>
+            <ul class="analysis-list" id="prosList"></ul>
+          </div>
+          <div class="analysis-card cons">
+            <h4>⚠️ Cons (Model Flaws &amp; Exploits)</h4>
+            <ul class="analysis-list" id="consList"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       BRAWLER AI MATCHMAKING SIMULATOR — CORE LOGIC & SIMULATION ENGINE
+       ========================================================================== */
+
+    // Fixed Cartoon Brawler Identities for Blue Team vs. Red Team
+    const BLUE_BRAWLERS = [
+      { avatar: '🤖', brawlerName: 'Mecha-Bot' },
+      { avatar: '🦁', brawlerName: 'Leo-Brawler' },
+      { avatar: '🐱', brawlerName: 'Kit-Striker' }
+    ];
+
+    const RED_BRAWLERS = [
+      { avatar: '🤠', brawlerName: 'Colt-Outlaw' },
+      { avatar: '🌵', brawlerName: 'Spike-Cactus' },
+      { avatar: '🏴‍☠️', brawlerName: 'Darryl-Pirate' }
+    ];
+
+    const GAMERTAG_POOL = [
+      'PixelNinja99', 'StarDropKing', 'TurboBrawler', 'LagWizard', 'TrophyHunter',
+      'NeonViper', 'CyberCactus', 'ShadowDash', 'CritMaster', 'SandbaggerPro',
+      'ArenaAce', 'HyperNova', 'BlazeFury', 'EchoStrike', 'FrostByte', 'GemGrabber'
+    ];
+
+    // Application State
+    const state = {
+      weights: {
+        power: 50,
+        trophy: 50,
+        ping: 50
+      },
+      antiExploit: true,
+      rawLobby: [],
+      blueTeam: [],
+      redTeam: [],
+      battleRunning: false,
+      battleFinished: false,
+      battleSpeed: 1, // 1x or 2x
+      battleTimer: null,
+      turnCount: 0,
+      lastWinner: null,
+      reportUnlocked: false
+    };
+
+    // DOM References
+    const el = {
+      powerSlider: document.getElementById('powerWeight'),
+      trophySlider: document.getElementById('trophyWeight'),
+      pingSlider: document.getElementById('pingWeight'),
+      powerVal: document.getElementById('powerWeightVal'),
+      trophyVal: document.getElementById('trophyWeightVal'),
+      pingVal: document.getElementById('pingWeightVal'),
+      antiExploit: document.getElementById('antiExploitToggle'),
+      generateBtn: document.getElementById('generateLobbyBtn'),
+
+      blueMMScore: document.getElementById('blueMMScore'),
+      blueTrueRating: document.getElementById('blueTrueRating'),
+      redMMScore: document.getElementById('redMMScore'),
+      redTrueRating: document.getElementById('redTrueRating'),
+      blueRoster: document.getElementById('blueRoster'),
+      redRoster: document.getElementById('redRoster'),
+
+      startBattleBtn: document.getElementById('startBattleBtn'),
+      speedToggleBtn: document.getElementById('speedToggleBtn'),
+      resetBattleBtn: document.getElementById('resetBattleBtn'),
+      victoryBanner: document.getElementById('victoryBanner'),
+      victoryTitle: document.getElementById('victoryTitle'),
+      victorySubtitle: document.getElementById('victorySubtitle'),
+      arenaVisualizer: document.getElementById('arenaVisualizer'),
+      blueArenaTokens: document.getElementById('blueArenaTokens'),
+      redArenaTokens: document.getElementById('redArenaTokens'),
+      arenaTurnBadge: document.getElementById('arenaTurnBadge'),
+      arenaHeadline: document.getElementById('arenaHeadline'),
+      battleLog: document.getElementById('battleLog'),
+
+      toggleReportBtn: document.getElementById('toggleReportBtn'),
+      diagnosticContent: document.getElementById('diagnosticContent'),
+      diagSummaryStrip: document.getElementById('diagSummaryStrip'),
+      prosList: document.getElementById('prosList'),
+      consList: document.getElementById('consList')
+    };
+
+    /* --------------------------------------------------------------------------
+       1. HELPER UTILITIES & STAT NORMALIZATION
+       -------------------------------------------------------------------------- */
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function clamp(val, min, max) {
+      return Math.max(min, Math.min(max, val));
+    }
+
+    // Normalize the 3 custom criteria onto a 0–100 scale
+    function normalizeStats(player) {
+      // Power Level: 1 <= powerLevel <= 11
+      const powerNorm = ((player.powerLevel - 1) / 10) * 100;
+      // Trophy Count: 0 <= trophies <= 1000
+      const trophyNorm = (player.trophies / 1000) * 100;
+      // Ping: 0 ms <= ping <= 500 ms (0 ms = 100 quality, 500 ms = 0 quality)
+      const pingNorm = ((500 - player.ping) / 500) * 100;
+
+      return { powerNorm, trophyNorm, pingNorm };
+    }
+
+    // True Combat Rating reflects actual in-arena strength regardless of slider weights
+    function computeTrueCombatRating(player) {
+      const { powerNorm, trophyNorm, pingNorm } = normalizeStats(player);
+      return Number((powerNorm * 0.45 + trophyNorm * 0.35 + pingNorm * 0.20).toFixed(1));
+    }
+
+    // Max HP scales directly with Power Level (1–11)
+    function computeMaxHP(powerLevel) {
+      return Math.round(2400 + (powerLevel - 1) * 320);
+    }
+
+    /* --------------------------------------------------------------------------
+       2. LOBBY GENERATION & AI MATCHMAKING SCORING ENGINE
+       -------------------------------------------------------------------------- */
+    function createRandomLobby() {
+      const shuffledTags = [...GAMERTAG_POOL].sort(() => Math.random() - 0.5);
+      const players = [];
+
+      // Create 6 varied players within exact bounds:
+      // Power Level: 1–11 | Trophy Count: 0–1000 | Ping: 0–500 ms
+      // Include at least 1 deliberate edge-case archetype (sandbagger or high-ping veteran)
+      // so students can test how slider weights & Anti-Exploit react!
+      const archetypeRoll = randInt(0, 2);
+
+      for (let i = 0; i < 6; i++) {
+        let powerLevel, trophies, ping;
+
+        if (i === 0 && archetypeRoll !== 2) {
+          // Archetype A: Power-Level Sandbagger (Power 10-11, low trophies < 200)
+          powerLevel = randInt(10, 11);
+          trophies = randInt(45, 195);
+          ping = randInt(25, 110);
+        } else if (i === 1 && archetypeRoll >= 1) {
+          // Archetype B: High-Latency Overseas Veteran (High trophies, high ping 290-460ms)
+          powerLevel = randInt(6, 9);
+          trophies = randInt(680, 960);
+          ping = randInt(290, 460);
+        } else if (i === 2) {
+          // Archetype C: Developing Rookie
+          powerLevel = randInt(1, 4);
+          trophies = randInt(20, 280);
+          ping = randInt(18, 140);
+        } else {
+          // Balanced / Standard Competitive Players
+          powerLevel = randInt(3, 10);
+          const baseTrophy = (powerLevel - 1) * 85 + randInt(-160, 180);
+          trophies = clamp(baseTrophy, 0, 1000);
+          ping = randInt(15, 240);
+        }
+
+        const maxHp = computeMaxHP(powerLevel);
+        players.push({
+          id: `p_${i}`,
+          gamertag: shuffledTags[i],
+          powerLevel,
+          trophies,
+          ping,
+          maxHp,
+          currentHp: maxHp,
+          trueRating: 0,
+          mmScore: 0,
+          exploitFlags: [],
+          damageDealt: 0
+        });
+      }
+
+      return players;
+    }
+
+    function evaluateAndMatchmake() {
+      stopBattleSimulation();
+
+      // Update weights from UI
+      state.weights.power = Number(el.powerSlider.value);
+      state.weights.trophy = Number(el.trophySlider.value);
+      state.weights.ping = Number(el.pingSlider.value);
+      state.antiExploit = el.antiExploit.checked;
+
+      const totalWeight = state.weights.power + state.weights.trophy + state.weights.ping;
+
+      // Score each player in the 6-player lobby
+      const scoredPlayers = state.rawLobby.map((p) => {
+        const { powerNorm, trophyNorm, pingNorm } = normalizeStats(p);
+        const trueRating = computeTrueCombatRating(p);
+        const flags = [];
+
+        let rawScore;
+        if (totalWeight === 0) {
+          // If all sliders are 0%, AI assigns uniform random score (blind matchmaking)
+          rawScore = 50;
+        } else {
+          rawScore =
+            (powerNorm * state.weights.power +
+              trophyNorm * state.weights.trophy +
+              pingNorm * state.weights.ping) /
+            totalWeight;
+        }
+
+        let adjustedScore = rawScore;
+
+        // Anti-Exploit Range Penalty Logic
+        if (state.antiExploit) {
+          // 1. Power-Level Sandbagging / Smurf detection (Power 9-11 at <=240 trophies or huge gap)
+          if ((p.powerLevel >= 9 && p.trophies <= 240) || powerNorm - trophyNorm >= 48) {
+            flags.push('⚠️ SANDBAGGER PENALTY');
+            // Override low-trophy disguise by enforcing a minimum power-based floor
+            adjustedScore = Math.max(adjustedScore, powerNorm * 0.82);
+          }
+
+          // 2. High-Ping Outlier detection (>= 280 ms)
+          if (p.ping >= 280) {
+            flags.push('📶 HIGH-PING PENALTY');
+            adjustedScore = Math.max(5, adjustedScore - 12);
+          }
+        }
+
+        const maxHp = computeMaxHP(p.powerLevel);
+        return {
+          ...p,
+          maxHp,
+          currentHp: maxHp,
+          trueRating,
+          mmScore: Number(adjustedScore.toFixed(1)),
+          exploitFlags: flags,
+          damageDealt: 0
+        };
+      });
+
+      // Optimal 3v3 Partition (minimizing AI Perceived Matchmaking Score difference)
+      // There are 10 unique ways to split 6 players into two teams of 3.
+      const indices = [0, 1, 2, 3, 4, 5];
+      let bestDiff = Infinity;
+      let bestBlueIdx = [0, 1, 2];
+
+      for (let i = 0; i < 6; i++) {
+        for (let j = i + 1; j < 6; j++) {
+          for (let k = j + 1; k < 6; k++) {
+            const blueIdx = [i, j, k];
+            const redIdx = indices.filter((idx) => !blueIdx.includes(idx));
+
+            const blueAvg =
+              blueIdx.reduce((sum, idx) => sum + scoredPlayers[idx].mmScore, 0) / 3;
+            const redAvg =
+              redIdx.reduce((sum, idx) => sum + scoredPlayers[idx].mmScore, 0) / 3;
+
+            let diff = Math.abs(blueAvg - redAvg);
+
+            // If Anti-Exploit is active, also discourage stacking flagged outliers on one team
+            if (state.antiExploit) {
+              const blueFlags = blueIdx.reduce(
+                (acc, idx) => acc + scoredPlayers[idx].exploitFlags.length,
+                0
+              );
+              const redFlags = redIdx.reduce(
+                (acc, idx) => acc + scoredPlayers[idx].exploitFlags.length,
+                0
+              );
+              diff += Math.abs(blueFlags - redFlags) * 4.5;
+            }
+
+            if (diff < bestDiff) {
+              bestDiff = diff;
+              bestBlueIdx = blueIdx;
+            }
+          }
+        }
+      }
+
+      const redIdx = indices.filter((idx) => !bestBlueIdx.includes(idx));
+
+      // Assign fixed cartoon brawler avatars to Blue Team & Red Team
+      state.blueTeam = bestBlueIdx.map((idx, slot) => ({
+        ...scoredPlayers[idx],
+        team: 'blue',
+        slot,
+        avatar: BLUE_BRAWLERS[slot].avatar,
+        brawlerName: BLUE_BRAWLERS[slot].brawlerName
+      }));
+
+      state.redTeam = redIdx.map((idx, slot) => ({
+        ...scoredPlayers[idx],
+        team: 'red',
+        slot,
+        avatar: RED_BRAWLERS[slot].avatar,
+        brawlerName: RED_BRAWLERS[slot].brawlerName
+      }));
+
+      state.battleFinished = false;
+      state.turnCount = 0;
+      state.lastWinner = null;
+
+      renderAll();
+    }
+
+    function lockDiagnosticReport() {
+      state.reportUnlocked = false;
+      el.diagnosticContent.classList.add('is-locked');
+      el.toggleReportBtn.textContent = '🔓 Reveal AI Diagnostic Report';
+    }
+
+    /* --------------------------------------------------------------------------
+       3. UI RENDERING (ROSTERS, ARENA TOKENS, DIAGNOSTIC REPORT)
+       -------------------------------------------------------------------------- */
+    function getPingBadgeClass(ping) {
+      if (ping < 80) return 'ping-good';
+      if (ping <= 200) return 'ping-warn';
+      return 'ping-bad';
+    }
+
+    function getHPBarColor(pct) {
+      if (pct > 55) return 'linear-gradient(90deg, #10b981, #34d399)';
+      if (pct > 25) return 'linear-gradient(90deg, #f59e0b, #fbbf24)';
+      return 'linear-gradient(90deg, #dc2626, #fb7185)';
+    }
+
+    function renderPlayerCard(player) {
+      const hpPct = clamp((player.currentHp / player.maxHp) * 100, 0, 100);
+      const isKO = player.currentHp <= 0;
+      const pingClass = getPingBadgeClass(player.ping);
+
+      const flagsHTML = player.exploitFlags
+        .map((flag) => `<span class="exploit-flag">${flag}</span>`)
+        .join('');
+
+      return `
+        <article class="player-card ${player.team}-card ${isKO ? 'is-ko' : ''}" id="card-${player.id}">
+          <div class="ko-stamp">💀 KO</div>
+          <div class="player-top">
+            <div class="avatar-identity">
+              <div class="brawler-avatar">${player.avatar}</div>
+              <div class="brawler-info">
+                <h3>${player.brawlerName}</h3>
+                <span class="gamertag">@${player.gamertag}</span>
+              </div>
+            </div>
+            <div class="mm-score-pill">
+              <span>MM Score</span>
+              <strong>${player.mmScore.toFixed(1)}</strong>
+            </div>
+          </div>
+
+          <div class="stats-row">
+            <span class="stat-badge stat-power">⚡ Pwr ${player.powerLevel}/11</span>
+            <span class="stat-badge stat-trophy">🏆 ${player.trophies}</span>
+            <span class="stat-badge ${pingClass}">📶 ${player.ping} ms</span>
+            ${flagsHTML}
+          </div>
+
+          <div class="hp-wrapper">
+            <div class="hp-label-row">
+              <span>HP</span>
+              <span id="hp-text-${player.id}">${player.currentHp} / ${player.maxHp}</span>
+            </div>
+            <div class="hp-track">
+              <div
+                class="hp-fill"
+                id="hp-fill-${player.id}"
+                style="width: ${hpPct}%; background: ${getHPBarColor(hpPct)};"
+              ></div>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderArenaTokens() {
+      el.blueArenaTokens.innerHTML = state.blueTeam
+        .map(
+          (p) => `
+          <div class="arena-token blue-token ${p.currentHp <= 0 ? 'token-ko' : ''}" id="token-${p.id}" title="${p.brawlerName} (${p.currentHp} HP)">
+            ${p.avatar}
+          </div>
+        `
+        )
+        .join('');
+
+      el.redArenaTokens.innerHTML = state.redTeam
+        .map(
+          (p) => `
+          <div class="arena-token red-token ${p.currentHp <= 0 ? 'token-ko' : ''}" id="token-${p.id}" title="${p.brawlerName} (${p.currentHp} HP)">
+            ${p.avatar}
+          </div>
+        `
+        )
+        .join('');
+    }
+
+    function renderAll() {
+      // Calculate group averages
+      const blueAvgMM =
+        state.blueTeam.reduce((s, p) => s + p.mmScore, 0) / state.blueTeam.length;
+      const redAvgMM =
+        state.redTeam.reduce((s, p) => s + p.mmScore, 0) / state.redTeam.length;
+
+      const blueAvgTrue =
+        state.blueTeam.reduce((s, p) => s + p.trueRating, 0) / state.blueTeam.length;
+      const redAvgTrue =
+        state.redTeam.reduce((s, p) => s + p.trueRating, 0) / state.redTeam.length;
+
+      el.blueMMScore.textContent = blueAvgMM.toFixed(1);
+      el.redMMScore.textContent = redAvgMM.toFixed(1);
+      el.blueTrueRating.textContent = blueAvgTrue.toFixed(1);
+      el.redTrueRating.textContent = redAvgTrue.toFixed(1);
+
+      // Render 3v3 player cards
+      el.blueRoster.innerHTML = state.blueTeam.map(renderPlayerCard).join('');
+      el.redRoster.innerHTML = state.redTeam.map(renderPlayerCard).join('');
+
+      // Render Arena tokens & reset banners
+      renderArenaTokens();
+      el.victoryBanner.classList.remove('show', 'blue-win', 'red-win');
+      el.arenaTurnBadge.textContent = 'READY FOR COMBAT';
+      el.arenaHeadline.textContent = 'Press "Start Battle Simulation!" to watch how stats & ping impact the 3v3 fight.';
+      el.startBattleBtn.disabled = false;
+      el.startBattleBtn.textContent = '⚔️ Start Battle Simulation!';
+
+      // Seed initial battle log
+      el.battleLog.innerHTML = `
+        <div class="log-entry">
+          📋 <strong>Lobby Ready:</strong> Blue Team (Avg Pwr ${(
+            state.blueTeam.reduce((s, p) => s + p.powerLevel, 0) / 3
+          ).toFixed(1)}, Avg 🏆 ${Math.round(
+            state.blueTeam.reduce((s, p) => s + p.trophies, 0) / 3
+          )}) vs Red Team (Avg Pwr ${(
+            state.redTeam.reduce((s, p) => s + p.powerLevel, 0) / 3
+          ).toFixed(1)}, Avg 🏆 ${Math.round(
+            state.redTeam.reduce((s, p) => s + p.trophies, 0) / 3
+          )}).
+        </div>
+      `;
+
+      // Update Section 3 Diagnostic Report
+      renderDiagnosticReport(blueAvgMM, redAvgMM, blueAvgTrue, redAvgTrue);
+    }
+
+    /* --------------------------------------------------------------------------
+       4. REALTIME 3v3 BATTLE ARENA SIMULATION
+       -------------------------------------------------------------------------- */
+    function spawnSparkleEffect(emojiList = ['✨', '⚡', '🎆']) {
+      const rect = el.arenaVisualizer.getBoundingClientRect();
+      const count = 4;
+      for (let i = 0; i < count; i++) {
+        const spark = document.createElement('span');
+        spark.className = 'sparkle-burst';
+        spark.textContent = emojiList[i % emojiList.length];
+        spark.style.left = `${randInt(18, 82)}%`;
+        spark.style.top = `${randInt(15, 75)}%`;
+        el.arenaVisualizer.appendChild(spark);
+        setTimeout(() => spark.remove(), 700);
+      }
+    }
+
+    function appendBattleLog(htmlText, typeClass = '') {
+      const div = document.createElement('div');
+      div.className = `log-entry ${typeClass}`;
+      div.innerHTML = htmlText;
+      el.battleLog.appendChild(div);
+      el.battleLog.scrollTop = el.battleLog.scrollHeight;
+    }
+
+    function updateSinglePlayerUI(player) {
+      const hpPct = clamp((player.currentHp / player.maxHp) * 100, 0, 100);
+      const hpText = document.getElementById(`hp-text-${player.id}`);
+      const hpFill = document.getElementById(`hp-fill-${player.id}`);
+      const card = document.getElementById(`card-${player.id}`);
+      const token = document.getElementById(`token-${player.id}`);
+
+      if (hpText) hpText.textContent = `${player.currentHp} / ${player.maxHp}`;
+      if (hpFill) {
+        hpFill.style.width = `${hpPct}%`;
+        hpFill.style.background = getHPBarColor(hpPct);
+      }
+      if (player.currentHp <= 0) {
+        if (card) card.classList.add('is-ko');
+        if (token) token.classList.add('token-ko');
+      }
+    }
+
+    function triggerCardAnim(playerId, animClass) {
+      const card = document.getElementById(`card-${playerId}`);
+      const token = document.getElementById(`token-${playerId}`);
+      if (card) {
+        card.classList.remove(animClass);
+        void card.offsetWidth; // trigger reflow
+        card.classList.add(animClass);
+      }
+      if (token) {
+        token.classList.add('token-active');
+        setTimeout(() => token.classList.remove('token-active'), 420);
+      }
+    }
+
+    function executeBattleTurn() {
+      const aliveBlue = state.blueTeam.filter((p) => p.currentHp > 0);
+      const aliveRed = state.redTeam.filter((p) => p.currentHp > 0);
+
+      if (aliveBlue.length === 0 || aliveRed.length === 0) {
+        finishBattle(aliveBlue.length > 0 ? 'blue' : 'red');
+        return;
+      }
+
+      state.turnCount += 1;
+
+      // Alternate initiative with slight advantage to lower-ping team
+      const blueAvgPing = aliveBlue.reduce((s, p) => s + p.ping, 0) / aliveBlue.length;
+      const redAvgPing = aliveRed.reduce((s, p) => s + p.ping, 0) / aliveRed.length;
+
+      let attackerTeam, defenderTeam;
+      if (state.turnCount % 2 === 1) {
+        attackerTeam = blueAvgPing <= redAvgPing ? aliveBlue : aliveRed;
+        defenderTeam = attackerTeam === aliveBlue ? aliveRed : aliveBlue;
+      } else {
+        attackerTeam = blueAvgPing <= redAvgPing ? aliveRed : aliveBlue;
+        defenderTeam = attackerTeam === aliveBlue ? aliveRed : aliveBlue;
+      }
+
+      const attacker = attackerTeam[randInt(0, attackerTeam.length - 1)];
+      // Target lowest HP opponent or random opponent
+      const target =
+        Math.random() < 0.6
+          ? [...defenderTeam].sort((a, b) => a.currentHp - b.currentHp)[0]
+          : defenderTeam[randInt(0, defenderTeam.length - 1)];
+
+      const teamTag = attacker.team === 'blue' ? '🔵' : '🔴';
+      const logTeamClass = attacker.team === 'blue' ? 'blue-log' : 'red-log';
+
+      el.arenaTurnBadge.textContent = `TURN ${state.turnCount}`;
+      triggerCardAnim(attacker.id, 'anim-attack');
+
+      // 1. Check High-Ping Lag Spike (Ping > 170 ms)
+      const lagChance = attacker.ping > 170 ? Math.min(0.42, (attacker.ping - 150) / 820) : 0;
+      if (Math.random() < lagChance) {
+        el.arenaHeadline.textContent = `📶 ${attacker.brawlerName} hit a ${attacker.ping}ms LAG SPIKE!`;
+        spawnSparkleEffect(['📶', '💫']);
+        appendBattleLog(
+          `[T${state.turnCount}] ${teamTag} <strong>${attacker.brawlerName}</strong> suffered a <strong>📶 LAG SPIKE (${attacker.ping} ms)</strong> — shot delayed &amp; missed ${target.brawlerName}!`,
+          'lag-log'
+        );
+        return;
+      }
+
+      // 2. Check Trophy-based Dodge Reflex (0–1000 trophies -> up to 22% dodge)
+      const dodgeChance = (target.trophies / 1000) * 0.22;
+      if (Math.random() < dodgeChance) {
+        el.arenaHeadline.textContent = `💨 ${target.brawlerName} (${target.trophies}🏆) dodged ${attacker.brawlerName}!`;
+        spawnSparkleEffect(['💨', '✨']);
+        appendBattleLog(
+          `[T${state.turnCount}] ${teamTag} <strong>${attacker.brawlerName}</strong> fired at <strong>${target.brawlerName}</strong>, but high Trophy instinct (${target.trophies}🏆) triggered a <strong>💨 DODGE!</strong>`,
+          logTeamClass
+        );
+        return;
+      }
+
+      // 3. Calculate Damage from Power Level (1–11), Trophy Crit (0–1000), and Low-Ping Bonus (<70ms)
+      let baseDmg = 360 + (attacker.powerLevel - 1) * 58 + randInt(-35, 45);
+      const critChance = 0.06 + (attacker.trophies / 1000) * 0.34;
+      const isCrit = Math.random() < critChance;
+      const isLowPingBonus = attacker.ping < 70 && Math.random() < 0.32;
+
+      if (isCrit) baseDmg *= 1.5;
+      if (isLowPingBonus) baseDmg *= 1.2;
+
+      const finalDmg = Math.round(baseDmg);
+      attacker.damageDealt += finalDmg;
+      target.currentHp = Math.max(0, target.currentHp - finalDmg);
+
+      triggerCardAnim(target.id, 'anim-hit');
+      updateSinglePlayerUI(target);
+
+      const sparkles = isCrit ? ['⚡', '🎆', '✨'] : ['✨', '💥'];
+      spawnSparkleEffect(sparkles);
+
+      let tagNote = '';
+      let extraClass = logTeamClass;
+      if (isCrit) {
+        tagNote += ` <strong>⚡ CRITICAL HIT!</strong>`;
+        extraClass = 'crit-log';
+      }
+      if (isLowPingBonus) {
+        tagNote += ` <strong>🚀 LOW-PING RAPID FIRE (${attacker.ping}ms)!</strong>`;
+      }
+
+      el.arenaHeadline.textContent = `${attacker.avatar} ${attacker.brawlerName} hits ${target.avatar} ${target.brawlerName} for ${finalDmg} DMG!`;
+
+      appendBattleLog(
+        `[T${state.turnCount}] ${teamTag} <strong>${attacker.brawlerName}</strong> (Pwr ${attacker.powerLevel}) blasts <strong>${target.brawlerName}</strong> for <strong>${finalDmg} DMG</strong>!${tagNote}`,
+        extraClass
+      );
+
+      if (target.currentHp === 0) {
+        spawnSparkleEffect(['💀', '🎆', '✨']);
+        appendBattleLog(
+          `💀 <strong>${target.brawlerName} (@${target.gamertag}) has been KO'd!</strong>`,
+          'ko-log'
+        );
+      }
+
+      // Check win condition immediately after KO
+      const remBlue = state.blueTeam.filter((p) => p.currentHp > 0).length;
+      const remRed = state.redTeam.filter((p) => p.currentHp > 0).length;
+      if (remBlue === 0 || remRed === 0) {
+        finishBattle(remBlue > 0 ? 'blue' : 'red');
+      }
+    }
+
+    function finishBattle(winner) {
+      stopBattleSimulation();
+      state.battleFinished = true;
+      state.lastWinner = winner;
+
+      const winningRoster = winner === 'blue' ? state.blueTeam : state.redTeam;
+      const mvp = [...winningRoster].sort((a, b) => b.damageDealt - a.damageDealt)[0];
+
+      el.victoryBanner.classList.remove('blue-win', 'red-win');
+      el.victoryBanner.classList.add('show', winner === 'blue' ? 'blue-win' : 'red-win');
+
+      if (winner === 'blue') {
+        el.victoryTitle.textContent = '🎆 BLUE TEAM VICTORY! 🎆';
+      } else {
+        el.victoryTitle.textContent = '🎆 RED TEAM VICTORY! 🎆';
+      }
+
+      el.victorySubtitle.textContent = `Finished in ${state.turnCount} turns • Match MVP: ${mvp.avatar} ${mvp.brawlerName} (${mvp.damageDealt} total DMG)`;
+      el.arenaTurnBadge.textContent = 'MATCH COMPLETE';
+      el.arenaHeadline.textContent = `${winner === 'blue' ? '🔵 Blue Team' : '🔴 Red Team'} wins the 3v3 showdown!`;
+
+      spawnSparkleEffect(['🎆', '✨', '⚡', '🏆']);
+      appendBattleLog(
+        `🏆 <strong>${winner === 'blue' ? 'BLUE TEAM' : 'RED TEAM'} WINS!</strong> MVP: ${mvp.brawlerName} (${mvp.damageDealt} DMG).`,
+        'crit-log'
+      );
+
+      el.startBattleBtn.disabled = false;
+      el.startBattleBtn.textContent = '🔁 Replay Battle';
+
+      // Refresh diagnostic report with post-match insight
+      const blueAvgMM = state.blueTeam.reduce((s, p) => s + p.mmScore, 0) / 3;
+      const redAvgMM = state.redTeam.reduce((s, p) => s + p.mmScore, 0) / 3;
+      const blueAvgTrue = state.blueTeam.reduce((s, p) => s + p.trueRating, 0) / 3;
+      const redAvgTrue = state.redTeam.reduce((s, p) => s + p.trueRating, 0) / 3;
+      renderDiagnosticReport(blueAvgMM, redAvgMM, blueAvgTrue, redAvgTrue);
+    }
+
+    function startBattleSimulation() {
+      if (state.battleRunning) return;
+
+      if (state.battleFinished) {
+        resetBattleHP();
+      }
+
+      state.battleRunning = true;
+      el.startBattleBtn.disabled = true;
+      el.startBattleBtn.textContent = '⚔️ Battle in Progress...';
+      el.victoryBanner.classList.remove('show');
+
+      const intervalMs = state.battleSpeed === 1 ? 780 : 380;
+      executeBattleTurn();
+      state.battleTimer = setInterval(() => {
+        if (!state.battleRunning) return;
+        executeBattleTurn();
+      }, intervalMs);
+    }
+
+    function stopBattleSimulation() {
+      state.battleRunning = false;
+      if (state.battleTimer) {
+        clearInterval(state.battleTimer);
+        state.battleTimer = null;
+      }
+    }
+
+    function resetBattleHP() {
+      stopBattleSimulation();
+      state.battleFinished = false;
+      state.turnCount = 0;
+      state.lastWinner = null;
+
+      [...state.blueTeam, ...state.redTeam].forEach((p) => {
+        p.currentHp = p.maxHp;
+        p.damageDealt = 0;
+      });
+
+      renderAll();
+    }
+
+    /* --------------------------------------------------------------------------
+       5. SECTION 3: DYNAMIC DIAGNOSTIC REPORT (PROS & CONS ENGINE)
+       -------------------------------------------------------------------------- */
+    function renderDiagnosticReport(blueAvgMM, redAvgMM, blueAvgTrue, redAvgTrue) {
+      const { power, trophy, ping } = state.weights;
+      const totalWeight = power + trophy + ping;
+
+      const blueAvgPwr = state.blueTeam.reduce((s, p) => s + p.powerLevel, 0) / 3;
+      const redAvgPwr = state.redTeam.reduce((s, p) => s + p.powerLevel, 0) / 3;
+      const pwrGap = Math.abs(blueAvgPwr - redAvgPwr);
+
+      const blueAvgTrophy = state.blueTeam.reduce((s, p) => s + p.trophies, 0) / 3;
+      const redAvgTrophy = state.redTeam.reduce((s, p) => s + p.trophies, 0) / 3;
+      const trophyGap = Math.abs(blueAvgTrophy - redAvgTrophy);
+
+      const blueAvgPing = state.blueTeam.reduce((s, p) => s + p.ping, 0) / 3;
+      const redAvgPing = state.redTeam.reduce((s, p) => s + p.ping, 0) / 3;
+      const pingGap = Math.abs(blueAvgPing - redAvgPing);
+
+      const trueGap = Math.abs(blueAvgTrue - redAvgTrue);
+      const mmGap = Math.abs(blueAvgMM - redAvgMM);
+
+      const allPlayers = [...state.blueTeam, ...state.redTeam];
+      const sandbaggers = allPlayers.filter(
+        (p) => p.powerLevel >= 9 && p.trophies <= 240
+      );
+      const highPingPlayers = allPlayers.filter((p) => p.ping >= 280);
+
+      // Summary Strip
+      let verdictText = '✅ Well-Balanced Lobby';
+      let verdictColor = 'var(--emerald)';
+      if (trueGap >= 14) {
+        verdictText = '🚨 Severe Hidden Imbalance';
+        verdictColor = 'var(--red-primary)';
+      } else if (trueGap >= 7.5) {
+        verdictText = '⚠️ Moderate Stat Skew';
+        verdictColor = 'var(--gold)';
+      }
+
+      el.diagSummaryStrip.innerHTML = `
+        <div class="diag-stat-card">
+          <span>AI Fairness Verdict</span>
+          <strong style="color: ${verdictColor};">${verdictText}</strong>
+        </div>
+        <div class="diag-stat-card">
+          <span>Perceived MM Gap</span>
+          <strong>${mmGap.toFixed(1)} pts</strong>
+        </div>
+        <div class="diag-stat-card">
+          <span>True Combat Gap</span>
+          <strong style="color: ${trueGap >= 10 ? 'var(--red-primary)' : 'var(--emerald)'};">${trueGap.toFixed(1)} pts</strong>
+        </div>
+        <div class="diag-stat-card">
+          <span>Team Power / Ping Gap</span>
+          <strong>${pwrGap.toFixed(1)} Pwr • ${Math.round(pingGap)} ms</strong>
+        </div>
+      `;
+
+      // Dynamic Pros (Advantages)
+      const pros = [];
+      if (mmGap <= 4.5 && totalWeight > 0) {
+        pros.push(
+          `<strong>Tight Perceived Score Parity:</strong> The AI balanced both teams within <strong>${mmGap.toFixed(1)} MM points</strong> (Blue ${blueAvgMM.toFixed(1)} vs Red ${redAvgMM.toFixed(1)}), optimizing for fast queue times.`
+        );
+      }
+      if (power >= 55 && pwrGap <= 1.5) {
+        pros.push(
+          `<strong>Fair Upgrade Tiering:</strong> High Power Level weight (${power}%) kept team average Power Levels close (<strong>${blueAvgPwr.toFixed(1)} vs ${redAvgPwr.toFixed(1)}</strong>), preventing raw HP/damage stat stomps.`
+        );
+      }
+      if (trophy >= 55 && trophyGap <= 140) {
+        pros.push(
+          `<strong>Matched Competitive Experience:</strong> Emphasizing Trophy Count (${trophy}%) paired players with comparable skill averages (<strong>${Math.round(blueAvgTrophy)} vs ${Math.round(redAvgTrophy)} trophies</strong>).`
+        );
+      }
+      if (ping >= 55 && pingGap <= 65) {
+        pros.push(
+          `<strong>Low Latency Variance:</strong> Prioritizing Geographical Ping (${ping}%) kept regional connection speed consistent between teams (<strong>${Math.round(blueAvgPing)}ms vs ${Math.round(redAvgPing)}ms</strong>).`
+        );
+      }
+      if (state.antiExploit) {
+        pros.push(
+          `<strong>Active Anti-Exploit Protection:</strong> Range penalties flagged ${
+            sandbaggers.length + highPingPlayers.length
+          } outlier(s), preventing high-power low-trophy sandbaggers from disguised stomping.`
+        );
+      }
+      if (pros.length === 0) {
+        pros.push(
+          `<strong>Ultra-Fast Queue Assembly:</strong> With minimal strict constraints, the matchmaker can form a 6-player lobby instantaneously without regional or rank bottlenecks.`
+        );
+      }
+
+      // Dynamic Cons (Flaws & Exploits)
+      const cons = [];
+      if (totalWeight === 0) {
+        cons.push(
+          `<strong>Zero-Weight Blind Matchmaking:</strong> All three sliders are at 0%, causing the AI to ignore Power, Trophies, and Ping completely (creating a <strong>${trueGap.toFixed(1)}-pt True Combat Rating gap</strong>).`
+        );
+      }
+      if (power < 35) {
+        cons.push(
+          `<strong>Power-Level Blind Spot (${power}%):</strong> Under-weighting Power Level (1–11) allows high-level Brawlers with massive HP pools to overwhelm lower-level opponents (Team Power avg: <strong>${blueAvgPwr.toFixed(1)} vs ${redAvgPwr.toFixed(1)}</strong>).`
+        );
+      }
+      if (trophy < 35) {
+        cons.push(
+          `<strong>Skill / Trophy Mismatch (${trophy}%):</strong> Low Trophy weight pairs seasoned high-crit veterans with beginners (Team Trophy avg: <strong>${Math.round(blueAvgTrophy)} vs ${Math.round(redAvgTrophy)}</strong>).`
+        );
+      }
+      if (ping < 35) {
+        cons.push(
+          `<strong>Latency &amp; Lag Unfairness (${ping}%):</strong> Ignoring Geographical Ping (0–500 ms) exposes players to frequent lag spikes (Team Ping avg: <strong>${Math.round(blueAvgPing)}ms vs ${Math.round(redAvgPing)}ms</strong>).`
+        );
+      }
+      if (!state.antiExploit && sandbaggers.length > 0) {
+        const names = sandbaggers.map((s) => `${s.brawlerName} (Pwr ${s.powerLevel}, ${s.trophies}🏆)`).join(', ');
+        cons.push(
+          `<strong>Unchecked Sandbagging Exploit:</strong> With Anti-Exploit OFF, <strong>${names}</strong> exploited low trophy count to sneak into an easier lobby!`
+        );
+      }
+      if (trueGap - mmGap >= 6.5) {
+        cons.push(
+          `<strong>Illusion of Fairness:</strong> While the AI's weighted MM Score difference is only <strong>${mmGap.toFixed(1)} pts</strong>, the <strong>True Combat Rating gap is ${trueGap.toFixed(1)} pts</strong>—showing how biased weights mislead an AI model.`
+        );
+      }
+      if (cons.length === 0) {
+        cons.push(
+          `<strong>Queue Time Trade-Off:</strong> Enforcing strict balance across all three criteria simultaneously reduces the eligible player pool, which can lengthen matchmaking wait times in real servers.`
+        );
+      }
+
+      el.prosList.innerHTML = pros.map((item) => `<li>${item}</li>`).join('');
+      el.consList.innerHTML = cons.map((item) => `<li>${item}</li>`).join('');
+    }
+
+    /* --------------------------------------------------------------------------
+       6. EVENT LISTENERS & INITIALIZATION
+       -------------------------------------------------------------------------- */
+    function bindEvents() {
+      // Live slider value badges + real-time re-evaluation on current lobby
+      el.powerSlider.addEventListener('input', () => {
+        el.powerVal.textContent = `${el.powerSlider.value}%`;
+        evaluateAndMatchmake();
+      });
+
+      el.trophySlider.addEventListener('input', () => {
+        el.trophyVal.textContent = `${el.trophySlider.value}%`;
+        evaluateAndMatchmake();
+      });
+
+      el.pingSlider.addEventListener('input', () => {
+        el.pingVal.textContent = `${el.pingSlider.value}%`;
+        evaluateAndMatchmake();
+      });
+
+      el.antiExploit.addEventListener('change', () => {
+        const titleEl = document.querySelector('.anti-exploit-text strong');
+        titleEl.textContent = el.antiExploit.checked
+          ? '🛡️ Anti-Exploit Range Penalty (Enabled)'
+          : '⚠️ Anti-Exploit Range Penalty (Disabled)';
+        evaluateAndMatchmake();
+      });
+
+      // Generate fresh 6-player lobby & auto-lock reflection report
+      el.generateBtn.addEventListener('click', () => {
+        lockDiagnosticReport();
+        state.rawLobby = createRandomLobby();
+        evaluateAndMatchmake();
+      });
+
+      // Battle Arena controls
+      el.startBattleBtn.addEventListener('click', startBattleSimulation);
+
+      el.speedToggleBtn.addEventListener('click', () => {
+        state.battleSpeed = state.battleSpeed === 1 ? 2 : 1;
+        el.speedToggleBtn.textContent = `⏩ Speed: ${state.battleSpeed}x`;
+        if (state.battleRunning) {
+          stopBattleSimulation();
+          startBattleSimulation();
+        }
+      });
+
+      el.resetBattleBtn.addEventListener('click', resetBattleHP);
+
+      // Section 3 Lock/Reveal toggle
+      el.toggleReportBtn.addEventListener('click', () => {
+        state.reportUnlocked = !state.reportUnlocked;
+        if (state.reportUnlocked) {
+          el.diagnosticContent.classList.remove('is-locked');
+          el.toggleReportBtn.textContent = '🔒 Hide AI Diagnostic Report';
+        } else {
+          lockDiagnosticReport();
+        }
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      bindEvents();
+      state.rawLobby = createRandomLobby();
+      evaluateAndMatchmake();
+    });
+  </script>
+</body>
+</html>
